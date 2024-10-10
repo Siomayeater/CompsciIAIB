@@ -1,6 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';  // Import login page
-import 'Login.dart';  // Import any database-related functionality
+import 'Main.dart';  // Import any database-related functionality
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
