@@ -1,7 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'pages/login_page.dart';  // Import login page
-import 'Main.dart';  // Import any database-related functionality
+import 'login.dart';  // Adjust the path based on where your Login widget is defined
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -9,11 +7,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Login Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.red,
+      title: 'Login Page',
+      theme: ThemeData.from(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromRGBO(32, 63, 129, 1.0),
+        ),
       ),
-      home: LoginPage(),  // Set the LoginPage as the starting page
+      home: const LoginPage(),  // Set the LoginPage as the starting page
     );
   }
 }
