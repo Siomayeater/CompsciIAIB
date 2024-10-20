@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+class StockLevelReport extends StatelessWidget {
+  const StockLevelReport({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('Stock Level Report'),
       ),
       body: const Center(
-        child: Text('This is the settings page.'),
+        child: Text('Welcome to Stock Level Report!'),
       ),
     );
   }
