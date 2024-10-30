@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "496692803774",
+    "project_id": "ibcompsciia-799b8",
+    "storage_bucket": "ibcompsciia-799b8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:496692803774:android:e47bd65198e9471bc8c6ef",
+        "android_client_info": {
+          "package_name": "com.example.compsci_ia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYeljNhaJ_FjFeq_pnwLtnhHx9m-k_AcA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
