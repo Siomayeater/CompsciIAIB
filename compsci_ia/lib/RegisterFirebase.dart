@@ -59,26 +59,50 @@ class RegisterPage extends StatelessWidget {
                     // Log user UID for debugging
                     print('User UID: ${userCredential.user?.uid}');
 
-                    // Save additional user data to Firestore
-                    await _firestore.collection('users').doc(userCredential.user?.uid).set({
-                      'email': email,
-                      'company': company,
-                    }).then((value) {
-                      print('User data saved to Firestore');
-                    }).catchError((error) {
-                      print('Error saving user data to Firestore: $error');
-                    });
+                    // Save additional user data to Firestore, including the companyID
+                    try {
+                      QuerySnapshot companySnapshot = await _firestore.collection('companies')
+                          .where('name', isEqualTo: company)
+                          .limit(1)
+                          .get();
 
-                    // Show confirmation message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Registration successful!')),
-                    );
+                      if (companySnapshot.docs.isNotEmpty) {
+                        // Assuming the company document exists and its ID is used as companyID
+                        String companyID = companySnapshot.docs.first.id;
 
-                    // Navigate to LoginFirebase after successful registration
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LoginView()),
-                    );
+                        // Save the user data, including the companyID
+                        await _firestore.collection('users').doc(userCredential.user?.uid).set({
+                          'email': email,
+                          'company': company,
+                          'companyID': companyID,  // Save the companyID here
+                        }).then((value) {
+                          print('User data saved to Firestore');
+                        }).catchError((error) {
+                          print('Error saving user data to Firestore: $error');
+                        });
+
+                        // Show confirmation message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Registration successful!')),
+                        );
+
+                        // Navigate to LoginFirebase after successful registration
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginView()),
+                        );
+                      } else {
+                        // If no company found, show an error
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Company not found!')),
+                        );
+                      }
+                    } catch (e) {
+                      print('Error fetching company data: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error occurred while fetching company data')),
+                      );
+                    }
                   } on FirebaseAuthException catch (e) {
                     String errorMessage = 'An error occurred.';
 

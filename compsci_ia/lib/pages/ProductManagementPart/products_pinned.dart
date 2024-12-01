@@ -1,38 +1,46 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class ProductsPinned extends StatefulWidget {
-  const ProductsPinned({super.key, required this.pinnedItems});
+class ProductsPinned extends StatelessWidget {
+  final String productID;
+  final String productName;
+  final String productDesc;
+  final double productPrice;
+  final double productPriceSupplier;
+  final String supplierID;
 
-  final List<String> pinnedItems;
+  const ProductsPinned({
+    Key? key,
+    required this.productID,
+    required this.productName,
+    required this.productDesc,
+    required this.productPrice,
+    required this.productPriceSupplier,
+    required this.supplierID,
+  }) : super(key: key);
 
-  @override
-  _ProductsPinnedState createState() => _ProductsPinnedState();
-}
-
-class _ProductsPinnedState extends State<ProductsPinned> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Products Pinned'),
+        title: Text('Pinned: $productName'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: widget.pinnedItems.isEmpty
-            ? const Center(
-                child: Text('No pinned products yet!'),
-              )
-            : ListView.builder(
-                itemCount: widget.pinnedItems.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: ListTile(
-                      title: Text(widget.pinnedItems[index]),
-                    ),
-                  );
-                },
-              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Product Name: $productName', style: Theme.of(context).textTheme.headlineLarge),
+            const SizedBox(height: 8.0),
+            Text('Description: $productDesc'),
+            const SizedBox(height: 8.0),
+            Text('Price: \$${productPrice.toStringAsFixed(2)}'),
+            const SizedBox(height: 8.0),
+            Text('Supplier Price: \$${productPriceSupplier.toStringAsFixed(2)}'),
+            const SizedBox(height: 8.0),
+            Text('Supplier ID: $supplierID'),
+          ],
+        ),
       ),
     );
   }

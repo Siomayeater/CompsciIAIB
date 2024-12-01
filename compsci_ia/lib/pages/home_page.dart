@@ -1,74 +1,99 @@
-import 'package:flutter/material.dart';
-import 'package:compsci_ia/pages/R&A%20Part/R&A.dart';
-import 'package:compsci_ia/pages/ProductManagementPart/ProductManagement.dart';
 import 'package:compsci_ia/pages/AuditTrails.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:compsci_ia/pages/ProductManagementPart/ProductManagement.dart';
+import 'package:compsci_ia/pages/R&A%20Part/R&A.dart';
 import 'package:compsci_ia/pages/SupplierManagementPart/SupplierManagement.dart';
 
 class HomePage extends StatelessWidget {
   final String company;
-  final String companyID;  // Define companyID to pass to other pages
+  final String companyID;
 
-  const HomePage({super.key, required this.company, required this.companyID});
+  const HomePage({
+    Key? key,
+    required this.company,
+    required this.companyID,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Text('Welcome, $company'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacementNamed(context, '/login'); // Navigate back to login page
+            },
+          ),
+        ],
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            // Display company and companyID
             Text(
-              'Welcome to the Dashboard',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              'Company: $company',
+              style: const TextStyle(fontSize: 18),
             ),
-            SizedBox(height: 20),
             Text(
-              'Your Company: $company',
-              style: TextStyle(fontSize: 20),
+              'Company ID: $companyID',
+              style: const TextStyle(fontSize: 18),
             ),
-            SizedBox(height: 30),
-
-            // Buttons for navigation
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ResearchandAnalytics()), // Navigate to R&A page
-                );
-              },
-              child: const Text('Reports & Analytics'),
-            ),
+            const SizedBox(height: 20),
+            // Buttons to navigate to different pages
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProductManagement(companyID: companyID), // Pass companyID to ProductManagement
+                    builder: (context) => ProductManagement(companyID: companyID), // Pass companyID
                   ),
                 );
               },
-              child: const Text('Product Management'),
+              child: const Text('Go to Product Management'),
             ),
+            const SizedBox(height: 10),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SupplierManagement()), // Navigate to Supplier Management
+                  MaterialPageRoute(
+                    builder: (context) => const ResearchandAnalytics(),
+                  ),
                 );
               },
-              child: const Text('Supplier Management'),
+              child: const Text('Go to Research & Analytics'),
             ),
+            const SizedBox(height: 10),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const Audittrails()), // Navigate to Audit Trails
+                  MaterialPageRoute(
+                    builder: (context) => const SupplierManagement(),
+                  ),
                 );
               },
-              child: const Text('Audit Trails'),
+              child: const Text('Go to Supplier Management'),
+            ),
+            const SizedBox(height: 10),
+            // Button to navigate to Audit Trail
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AuditTrailPage(companyID: companyID), // Pass companyID to the AuditTrailPage
+                  ),
+                );
+              },
+              child: const Text('Go to Audit Trail'),
             ),
           ],
         ),
