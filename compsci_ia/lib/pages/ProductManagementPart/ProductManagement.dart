@@ -1,93 +1,99 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'product_detail.dart';
-import 'products_pinned.dart';
 
 class ProductManagement extends StatefulWidget {
-  const ProductManagement({super.key});
+  final String companyID;  // Add companyID as a required parameter
+
+  // Update constructor to accept companyID
+  const ProductManagement({super.key, required this.companyID});
 
   @override
   _ProductManagementState createState() => _ProductManagementState();
 }
 
 class _ProductManagementState extends State<ProductManagement> {
-  List<String> items = [
-    'Product 1',
-    'Product 2',
-    'Product 3',
-    'Product 4',
-    'Product 5',
-  ];
+  List<DocumentSnapshot> products = [];  // Stores the list of products
+  String searchQuery = '';  // For filtering products based on search query
 
-  List<String> pinnedItems = [];
+  // Form controllers for adding a product
+  final TextEditingController _productNameController = TextEditingController();
+  final TextEditingController _productDescController = TextEditingController();
+  final TextEditingController _productPriceController = TextEditingController();
+  final TextEditingController _productPriceSupplierController = TextEditingController();
+  final TextEditingController _supplierIDController = TextEditingController();
 
-  String searchQuery = '';
+  // Method to fetch products from Firestore
+  void fetchProducts() async {
+    final QuerySnapshot productSnapshot = await FirebaseFirestore.instance
+        .collection('products')
+        .get();
 
-  void addItem() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String newItem = '';
-        return AlertDialog(
-          title: const Text('Add New Product'),
-          content: TextField(
-            onChanged: (value) {
-              newItem = value;
-            },
-            decoration: const InputDecoration(hintText: 'Enter product name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (newItem.isNotEmpty) {
-                  setState(() {
-                    items.add(newItem);
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Add'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      products = productSnapshot.docs;
+    });
   }
 
-  void pinItem(String item) {
-    setState(() {
-      if (!pinnedItems.contains(item)) {
-        pinnedItems.add(item);
+  // Method to display product info
+  String getProductInfo(DocumentSnapshot product) {
+    final productData = product.data() as Map<String, dynamic>;
+
+    return 'Product Name: ${productData['productName']}\n'
+        'Description: ${productData['productDesc']}\n'
+        'Price: \$${productData['productPrice']}\n'
+        'Supplier Price: \$${productData['productPriceSupplier']}\n'
+        'Supplier ID: ${productData['supplierID']}';
+  }
+
+  // Method to add a new product
+  Future<void> addProduct() async {
+    final productName = _productNameController.text;
+    final productDesc = _productDescController.text;
+    final productPrice = double.tryParse(_productPriceController.text) ?? 0.0;
+    final productPriceSupplier = double.tryParse(_productPriceSupplierController.text) ?? 0.0;
+    final supplierID = _supplierIDController.text;
+
+    if (productName.isNotEmpty && productDesc.isNotEmpty) {
+      try {
+        await FirebaseFirestore.instance.collection('products').add({
+          'productName': productName,
+          'productDesc': productDesc,
+          'productPrice': productPrice,
+          'productPriceSupplier': productPriceSupplier,
+          'supplierID': supplierID,
+          'companyID': widget.companyID,  // Add companyID to associate with the product
+        });
+        fetchProducts();  // Re-fetch the products after adding
+        Navigator.pop(context);  // Close the dialog
+      } catch (e) {
+        print('Error adding product: $e');
       }
-    });
+    } else {
+      // Show an error if fields are empty
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();  // Fetch products when the page loads
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredItems = items.where((item) => item.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+    final filteredProducts = products.where((product) {
+      final productData = product.data() as Map<String, dynamic>;
+      return productData['productName']
+          .toString()
+          .toLowerCase()
+          .contains(searchQuery.toLowerCase());
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Product Management'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.push_pin),
-            onPressed: () {
-              // Navigate to Products Pinned page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProductsPinned(pinnedItems: pinnedItems),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -107,30 +113,50 @@ class _ProductManagementState extends State<ProductManagement> {
               ),
             ),
             const SizedBox(height: 16.0),
-            // List of Items
+            // List of Products
             Expanded(
               child: ListView.builder(
-                itemCount: filteredItems.length,
+                itemCount: filteredProducts.length,
                 itemBuilder: (context, index) {
+                  final product = filteredProducts[index];
+                  final productData = product.data() as Map<String, dynamic>;
+                  final productID = product.id;
+                  final productName = productData['productName'];
+                  final productDesc = productData['productDesc'];
+                  final productPrice = productData['productPrice'];
+                  final productPriceSupplier = productData['productPriceSupplier'];
+                  final supplierID = productData['supplierID'];
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
                     child: ListTile(
-                      title: Text(filteredItems[index]),
+                      title: Text(productName),
+                      subtitle: Text(productDesc),
                       trailing: IconButton(
-                        icon: const Icon(Icons.push_pin_outlined),
+                        icon: const Icon(Icons.delete),
                         onPressed: () {
-                          pinItem(filteredItems[index]);
+                          // Call a function to delete the product
+                          deleteProduct(productID);
                         },
                       ),
                       onTap: () {
-                        // Navigate to the Product Detail page when the product is tapped
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProductDetail(
-                              productName: filteredItems[index],
-                            ),
-                          ),
+                        // Show product info in a dialog when tapped
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: Text(productName),
+                              content: Text(getProductInfo(product)),  // Show product details
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
                     ),
@@ -138,14 +164,73 @@ class _ProductManagementState extends State<ProductManagement> {
                 },
               ),
             ),
-            // Add Item Button
+            const SizedBox(height: 16.0),
+            // Add Product Button
             ElevatedButton(
-              onPressed: addItem,
-              child: const Text('Add New Product'),
+              onPressed: () {
+                // Show a dialog to add a new product
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text('Add New Product'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: _productNameController,
+                            decoration: const InputDecoration(labelText: 'Product Name'),
+                          ),
+                          TextField(
+                            controller: _productDescController,
+                            decoration: const InputDecoration(labelText: 'Product Description'),
+                          ),
+                          TextField(
+                            controller: _productPriceController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Product Price'),
+                          ),
+                          TextField(
+                            controller: _productPriceSupplierController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Supplier Price'),
+                          ),
+                          TextField(
+                            controller: _supplierIDController,
+                            decoration: const InputDecoration(labelText: 'Supplier ID'),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);  // Close the dialog
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: addProduct,
+                          child: const Text('Add Product'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: const Text('Add Product'),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // Method to delete a product
+  Future<void> deleteProduct(String productID) async {
+    await FirebaseFirestore.instance
+        .collection('products')
+        .doc(productID)
+        .delete();
+    fetchProducts();  // Re-fetch the products after deletion
   }
 }

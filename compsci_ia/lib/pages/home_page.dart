@@ -1,28 +1,14 @@
-import 'package:compsci_ia/Login.dart';
+import 'package:flutter/material.dart';
 import 'package:compsci_ia/pages/R&A%20Part/R&A.dart';
 import 'package:compsci_ia/pages/ProductManagementPart/ProductManagement.dart';
 import 'package:compsci_ia/pages/AuditTrails.dart';
 import 'package:compsci_ia/pages/SupplierManagementPart/SupplierManagement.dart';
-import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Main Menu',
-      home: HomePage(),
-    );
-  }
-}
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final String company;
+  final String companyID;  // Define companyID to pass to other pages
+
+  const HomePage({super.key, required this.company, required this.companyID});
 
   @override
   Widget build(BuildContext context) {
@@ -30,85 +16,61 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
       ),
-      body: GridView.count(
-        padding: const EdgeInsets.all(20.0),
-        crossAxisCount: 2, // 2 columns
-        childAspectRatio: 2, // Aspect ratio of boxes
-        children: [
-          MenuBox(
-            title: 'Reporting & Analytics',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ResearchandAnalytics()),
-              );
-            },
-          ),
-          MenuBox(
-            title: 'Product Management',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProductManagement()),
-              );
-            },
-          ),
-          MenuBox(
-            title: 'Audit Trails',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Audittrails()),
-              );
-            },
-          ),
-          MenuBox(
-            title: 'Supplier Management',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SupplierManagement()),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Welcome to the Dashboard',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Your Company: $company',
+              style: TextStyle(fontSize: 20),
+            ),
+            SizedBox(height: 30),
 
-class MenuBox extends StatelessWidget {
-  final String title;
-  final VoidCallback onTap;
-
-  const MenuBox({super.key, required this.title, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.all(10.0),
-        decoration: BoxDecoration(
-          color: Colors.blueAccent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 6.0,
-              offset: Offset(0, 2),
+            // Buttons for navigation
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ResearchandAnalytics()), // Navigate to R&A page
+                );
+              },
+              child: const Text('Reports & Analytics'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductManagement(companyID: companyID), // Pass companyID to ProductManagement
+                  ),
+                );
+              },
+              child: const Text('Product Management'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SupplierManagement()), // Navigate to Supplier Management
+                );
+              },
+              child: const Text('Supplier Management'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Audittrails()), // Navigate to Audit Trails
+                );
+              },
+              child: const Text('Audit Trails'),
             ),
           ],
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
         ),
       ),
     );
