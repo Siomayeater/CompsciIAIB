@@ -1,10 +1,11 @@
 import 'package:compsci_ia/pages/R&A%20Part/Reports&Analytics/Product_performance.dart';
-import 'package:compsci_ia/pages/R&A%20Part/Reports&Analytics/Sales_Trend.dart';
+import 'package:compsci_ia/pages/R&A%20Part/Reports&Analytics/sales_trend.dart';
 import 'package:flutter/material.dart';
 
-
 class SalesAnalytics extends StatelessWidget {
-  const SalesAnalytics({super.key});
+  final String companyID;
+
+  const SalesAnalytics({super.key, required this.companyID});
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +21,12 @@ class SalesAnalytics extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Product Performance page
+                  // Navigate to the Product Performance page with the companyID
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ProductPerformance()),
+                    MaterialPageRoute(
+                      builder: (context) => ProductPerformancePage(companyID: companyID),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -40,10 +43,12 @@ class SalesAnalytics extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Sales Trend page
+                  // Navigate to the Sales Trend page with the companyID
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SalesTrend()),
+                    MaterialPageRoute(
+                      builder: (context) => SalesTrendReportPage(companyID: companyID),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(

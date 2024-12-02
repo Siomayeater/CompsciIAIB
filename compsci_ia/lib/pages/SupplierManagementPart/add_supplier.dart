@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ContractDetails extends StatefulWidget {
-  const ContractDetails({super.key});
+  final String companyID;  // Added companyID to the constructor
+
+  const ContractDetails({super.key, required this.companyID});
 
   @override
   _ContractDetailsState createState() => _ContractDetailsState();
@@ -10,25 +13,9 @@ class ContractDetails extends StatefulWidget {
 
 class _ContractDetailsState extends State<ContractDetails> {
   final List<Map<String, String>> suppliers = [];
-  List<String> supplierIds = [];  // To store supplier IDs fetched from Firestore
-  String? selectedSupplierID;
   final _supplierNameController = TextEditingController();
-  final _contactController = TextEditingController();
+  final _contactController = TextEditingController();  // Added contact controller
 
-  // Method to fetch suppliers from Firestore
-  Future<void> _fetchSuppliers() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance.collection('suppliers').get();
-      final supplierList = snapshot.docs.map((doc) => doc.id).toList();
-      setState(() {
-        supplierIds = supplierList;
-      });
-    } catch (e) {
-      print('Error fetching suppliers: $e');
-    }
-  }
-
-  // Method to add a new supplier
   void addSupplier() {
     String supplierName = '';
     String contact = '';
@@ -59,44 +46,28 @@ class _ContractDetailsState extends State<ContractDetails> {
                   labelText: 'Contact Information',
                 ),
               ),
-              const SizedBox(height: 10),
-              supplierIds.isEmpty
-                  ? const CircularProgressIndicator()  // Show loading until suppliers are fetched
-                  : DropdownButton<String>(
-                      value: selectedSupplierID,
-                      hint: const Text('Select Supplier'),
-                      onChanged: (newValue) {
-                        setState(() {
-                          selectedSupplierID = newValue;
-                        });
-                      },
-                      items: supplierIds.map((supplierID) {
-                        return DropdownMenuItem<String>(
-                          value: supplierID,
-                          child: Text(supplierID),  // Display the supplier ID (you can customize this)
-                        );
-                      }).toList(),
-                    ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () async {
-                if (supplierName.isNotEmpty && contact.isNotEmpty && selectedSupplierID != null) {
-                  // Add supplier to Firestore with companyID, supplierName, and contact
+                if (supplierName.isNotEmpty && contact.isNotEmpty) {
+                  // Get the current user ID
+                  String userId = FirebaseAuth.instance.currentUser!.uid;
+
                   try {
-                    // Add supplier to Firestore
+                    // Add supplier to Firestore with companyID, supplierName, and contact
                     await FirebaseFirestore.instance.collection('suppliers').add({
-                      'companyID': selectedSupplierID!,  // Store the selected supplierID as companyID
+                      'companyID': widget.companyID,  // Store the company ID
                       'supplierName': supplierName,
                       'contact': contact,
+                      'userId': userId, // Add the userId to reference the creator
                     });
 
                     setState(() {
                       suppliers.add({
                         'supplierName': supplierName,
                         'contact': contact,
-                        'supplierID': selectedSupplierID!,
                       });
                     });
 
@@ -122,10 +93,32 @@ class _ContractDetailsState extends State<ContractDetails> {
     );
   }
 
+  Future<void> getSuppliers() async {
+    try {
+      // Fetch suppliers for the given companyID from Firestore
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('suppliers')
+          .where('companyID', isEqualTo: widget.companyID)  // Filter by companyID
+          .get();
+
+      setState(() {
+        suppliers.clear();
+        snapshot.docs.forEach((doc) {
+          suppliers.add({
+            'supplierName': doc['supplierName'],
+            'contact': doc['contact'],
+          });
+        });
+      });
+    } catch (e) {
+      print("Error fetching suppliers: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _fetchSuppliers();  // Fetch supplier IDs when the screen is loaded
+    getSuppliers();
   }
 
   @override
@@ -149,7 +142,6 @@ class _ContractDetailsState extends State<ContractDetails> {
                           child: ListTile(
                             title: Text(suppliers[index]['supplierName'] ?? ''),
                             subtitle: Text(suppliers[index]['contact'] ?? ''),
-                            trailing: Text(suppliers[index]['supplierID'] ?? 'No ID'),
                           ),
                         );
                       },

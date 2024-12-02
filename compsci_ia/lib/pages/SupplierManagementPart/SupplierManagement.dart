@@ -3,7 +3,9 @@ import 'financial_management.dart';
 import 'supplier_information_management.dart';
 
 class SupplierManagement extends StatelessWidget {
-  const SupplierManagement({super.key});
+  final String companyID;
+
+  const SupplierManagement({super.key, required this.companyID});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +24,9 @@ class SupplierManagement extends StatelessWidget {
                   // Navigate to the Financial Management page
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const FinancialManagement()),
+                    MaterialPageRoute(
+                      builder: (context) => const FinancialManagement(),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -39,10 +43,12 @@ class SupplierManagement extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.5, // Half the width of the screen
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Supplier Information Management page
+                  // Navigate to the Supplier Information Management page with the companyID
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SupplierInformationManagement()),
+                    MaterialPageRoute(
+                      builder: (context) => SupplierInformationManagement(companyID: companyID),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(

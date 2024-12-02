@@ -76,6 +76,9 @@ class _LoginViewState extends State<LoginView> {
                   String company = userData['company'] ?? 'Unknown';
                   String companyID = userData['companyID'] ?? 'Unknown';
 
+                  // Print companyID for debugging
+                  print('Company ID: $companyID');
+
                   // Navigate to HomePage with company and companyID
                   Navigator.pushReplacement(
                     context,

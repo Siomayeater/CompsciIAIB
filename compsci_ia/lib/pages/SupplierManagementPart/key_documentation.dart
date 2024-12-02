@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
+import 'package:path/path.dart';
 
 class KeyDocumentation extends StatefulWidget {
   const KeyDocumentation({super.key});
@@ -8,44 +13,78 @@ class KeyDocumentation extends StatefulWidget {
 }
 
 class _KeyDocumentationState extends State<KeyDocumentation> {
-  // List to store uploaded PDFs (for simplicity, using file names)
-  List<String> pdfFiles = [];
+  // List to store uploaded PDFs with associated supplierIDs
+  List<Map<String, String>> pdfFiles = [];
 
-  void addPdf() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String newPdf = '';
-        return AlertDialog(
-          title: const Text('Upload New PDF'),
-          content: TextField(
-            onChanged: (value) {
-              newPdf = value;
-            },
-            decoration: const InputDecoration(hintText: 'Enter PDF name or path'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (newPdf.isNotEmpty) {
-                  setState(() {
-                    pdfFiles.add(newPdf);
-                  });
+  Future<void> addPdf(BuildContext context) async {
+    // Pick the PDF file using file_picker
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    
+    if (result != null) {
+      // Get the file from the result
+      File file = File(result.files.single.path!);
+      String fileName = basename(file.path);
+      
+      String supplierID = '';
+      
+      // Show dialog to get supplier ID
+      showDialog(
+        context: context,  // Pass context to the dialog
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Upload New PDF'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  onChanged: (value) {
+                    supplierID = value;
+                  },
+                  decoration: const InputDecoration(hintText: 'Enter Supplier ID'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  if (supplierID.isNotEmpty) {
+                    try {
+                      // Upload the file to Firebase Storage
+                      final storageRef = FirebaseStorage.instance.ref().child('pdfs/$fileName');
+                      await storageRef.putFile(file);
+
+                      // Get the download URL of the uploaded PDF
+                      String downloadUrl = await storageRef.getDownloadURL();
+
+                      setState(() {
+                        // Add PDF details to the list with the supplierID
+                        pdfFiles.add({
+                          'pdfName': fileName,
+                          'supplierID': supplierID,
+                          'downloadUrl': downloadUrl,
+                        });
+                      });
+
+                      Navigator.pop(context);
+                    } catch (e) {
+                      print('Error uploading PDF: $e');
+                      Navigator.pop(context);
+                    }
+                  }
+                },
+                child: const Text('Upload'),
+              ),
+              TextButton(
+                onPressed: () {
                   Navigator.pop(context);
-                }
-              },
-              child: const Text('Upload'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -67,7 +106,16 @@ class _KeyDocumentationState extends State<KeyDocumentation> {
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8.0),
                           child: ListTile(
-                            title: Text(pdfFiles[index]),
+                            title: Text(pdfFiles[index]['pdfName'] ?? ''),
+                            subtitle: Text('Supplier ID: ${pdfFiles[index]['supplierID']}'),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.download),
+                              onPressed: () async {
+                                String url = pdfFiles[index]['downloadUrl']!;
+                                // You can now use the URL to open the PDF, for example, using url_launcher or a webview
+                                print('Download URL: $url');
+                              },
+                            ),
                           ),
                         );
                       },
@@ -75,7 +123,7 @@ class _KeyDocumentationState extends State<KeyDocumentation> {
                   ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: addPdf,
+              onPressed: () => addPdf(context),  // Pass context to addPdf method
               child: const Text('Upload PDF'),
             ),
           ],

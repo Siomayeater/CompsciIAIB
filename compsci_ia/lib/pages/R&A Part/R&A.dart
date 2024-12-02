@@ -3,7 +3,14 @@ import 'inventory_report.dart';
 import 'sales_analytics.dart';
 
 class ResearchandAnalytics extends StatelessWidget {
-  const ResearchandAnalytics({super.key});
+  final String companyID;
+
+  const ResearchandAnalytics({super.key, required this.companyID});
+
+  // Helper method to print companyID on button press
+  void _printCompanyID() {
+    print("Company ID: $companyID");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,10 +26,13 @@ class ResearchandAnalytics extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Inventory Report page
+                  _printCompanyID();  // Print companyID when this button is pressed
+                  // Navigate to the Inventory Report page and pass companyID
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const InventoryReport()),
+                    MaterialPageRoute(
+                      builder: (context) => InventoryReport(companyID: companyID),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -39,10 +49,13 @@ class ResearchandAnalytics extends StatelessWidget {
               width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Sales Analytics page
+                  _printCompanyID();  // Print companyID when this button is pressed
+                  // Navigate to the Sales Analytics page and pass companyID
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SalesAnalytics()),
+                    MaterialPageRoute(
+                      builder: (context) => SalesAnalytics(companyID: companyID),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
