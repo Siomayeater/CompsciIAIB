@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'RegisterFirebase.dart';
+import 'RegisterFirebase.dart'; // Assuming this is your registration page
 import 'package:compsci_ia/pages/home_page.dart';
 
 class LoginView extends StatefulWidget {
@@ -14,6 +14,7 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -32,121 +33,150 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _email,
-              decoration: const InputDecoration(
-                hintText: 'Enter your email',
-              ),
-            ),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: 'Enter your password',
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final enteredEmail = _email.text;
-                final enteredPassword = _password.text;
-
-                if (enteredEmail.isEmpty || enteredPassword.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter both email and password')),
-                  );
-                  return;
-                }
-
-                try {
-                  final userCredential = await FirebaseAuth.instance
-                      .signInWithEmailAndPassword(
-                    email: enteredEmail,
-                    password: enteredPassword,
-                  );
-
-                  // Fetch company data for the logged-in user
-                  Map<String, String> userData = await getCompanyForUser();
-                  String company = userData['company'] ?? 'Unknown';
-                  String companyID = userData['companyID'] ?? 'Unknown';
-
-                  // Print companyID for debugging
-                  print('Company ID: $companyID');
-
-                  // Navigate to HomePage with company and companyID
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HomePage(
-                        company: company,
-                        companyID: companyID,
-                      ),
+      appBar: AppBar(title: const Text('Log In')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Log In',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 30),
+                TextField(
+                  controller: _email,
+                  decoration: InputDecoration(
+                    hintText: 'Username',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                } on FirebaseAuthException catch (e) {
-                  print('FirebaseAuthException: ${e.code}');
-                  if (e.code == 'user-not-found') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User not found!')),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _rememberMe = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text('Remember me?'),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                ElevatedButton(
+                  onPressed: _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Sign in?', style: TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => RegisterPage()),
                     );
-                  } else if (e.code == 'wrong-password') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Wrong password!')),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Authentication error!')),
-                    );
-                  }
-                } on FirebaseException catch (e) {
-                  print('FirebaseException: ${e.message}');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Firebase error: ${e.message}')),
-                  );
-                } catch (e) {
-                  print('General Exception: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('An unexpected error occurred.')),
-                  );
-                }
-              },
-              child: const Text('Log In'),
+                  },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    side: const BorderSide(color: Colors.green),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Register', style: TextStyle(color: Colors.green)),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
-                );
-              },
-              child: const Text('Back to Register'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // Fetch company data and companyID for the logged-in user
+  Future<void> _handleLogin() async {
+    final enteredEmail = _email.text;
+    final enteredPassword = _password.text;
+
+    if (enteredEmail.isEmpty || enteredPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password')),
+      );
+      return;
+    }
+
+    try {
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: enteredEmail,
+        password: enteredPassword,
+      );
+
+      Map<String, String> userData = await getCompanyForUser();
+      String company = userData['company'] ?? 'Unknown';
+      String companyID = userData['companyID'] ?? 'Unknown';
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(
+            company: company,
+            companyID: companyID,
+          ),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not found!')),
+        );
+      } else if (e.code == 'wrong-password') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wrong password!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication error!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An unexpected error occurred.')),
+      );
+    }
+  }
+
   Future<Map<String, String>> getCompanyForUser() async {
     String? userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null) {
       try {
         DocumentSnapshot userSnapshot =
             await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-        // Get companyID directly from user document
         String companyID = userSnapshot['companyID'] ?? 'Unknown';
-        
-        // Optionally fetch company name if needed (but it's not required for authorization)
         String company = userSnapshot['company'] ?? 'Unknown';
-
         return {'company': company, 'companyID': companyID};
       } on FirebaseException catch (e) {
         print('Error fetching user data: ${e.message}');

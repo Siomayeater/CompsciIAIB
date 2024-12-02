@@ -17,126 +17,141 @@ class RegisterPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Register')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                hintText: 'Enter your email',
-              ),
-            ),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: 'Enter your password',
-              ),
-            ),
-            TextField(
-              controller: companyController,
-              decoration: const InputDecoration(
-                hintText: 'Enter your company name',
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final email = emailController.text.trim();
-                final password = passwordController.text.trim();
-                final company = companyController.text.trim();
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Register',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 30),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: companyController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your company name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    final email = emailController.text.trim();
+                    final password = passwordController.text.trim();
+                    final company = companyController.text.trim();
 
-                if (email.isNotEmpty && password.isNotEmpty && company.isNotEmpty) {
-                  try {
-                    // Create user in Firebase Authentication
-                    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-                      email: email,
-                      password: password,
-                    );
-
-                    // Log user UID for debugging
-                    print('User UID: ${userCredential.user?.uid}');
-
-                    // Save additional user data to Firestore, including the companyID
-                    try {
-                      QuerySnapshot companySnapshot = await _firestore.collection('companies')
-                          .where('name', isEqualTo: company)
-                          .limit(1)
-                          .get();
-
-                      if (companySnapshot.docs.isNotEmpty) {
-                        // Assuming the company document exists and its ID is used as companyID
-                        String companyID = companySnapshot.docs.first.id;
-
-                        // Save the user data, including the companyID
-                        await _firestore.collection('users').doc(userCredential.user?.uid).set({
-                          'email': email,
-                          'company': company,
-                          'companyID': companyID,  // Save the companyID here
-                        }).then((value) {
-                          print('User data saved to Firestore');
-                        }).catchError((error) {
-                          print('Error saving user data to Firestore: $error');
-                        });
-
-                        // Show confirmation message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Registration successful!')),
+                    if (email.isNotEmpty && password.isNotEmpty && company.isNotEmpty) {
+                      try {
+                        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+                          email: email,
+                          password: password,
                         );
 
-                        // Navigate to LoginFirebase after successful registration
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginView()),
-                        );
-                      } else {
-                        // If no company found, show an error
+                        QuerySnapshot companySnapshot = await _firestore
+                            .collection('companies')
+                            .where('name', isEqualTo: company)
+                            .limit(1)
+                            .get();
+
+                        if (companySnapshot.docs.isNotEmpty) {
+                          String companyID = companySnapshot.docs.first.id;
+
+                          await _firestore.collection('users').doc(userCredential.user?.uid).set({
+                            'email': email,
+                            'company': company,
+                            'companyID': companyID,
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Registration successful!')),
+                          );
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginView()),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Company not found!')),
+                          );
+                        }
+                      } on FirebaseAuthException catch (e) {
+                        String errorMessage = 'An error occurred.';
+
+                        if (e.code == 'email-already-in-use') {
+                          errorMessage = 'This email is already registered.';
+                        } else if (e.code == 'weak-password') {
+                          errorMessage = 'The password is too weak.';
+                        }
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Company not found!')),
+                          SnackBar(content: Text(errorMessage)),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('An unexpected error occurred.')),
                         );
                       }
-                    } catch (e) {
-                      print('Error fetching company data: $e');
+                    } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Error occurred while fetching company data')),
+                        const SnackBar(content: Text('Please fill all fields')),
                       );
                     }
-                  } on FirebaseAuthException catch (e) {
-                    String errorMessage = 'An error occurred.';
-
-                    // Print out the error details for debugging
-                    print('Auth Error: ${e.message}');
-                    print('Auth Error Code: ${e.code}');
-
-                    if (e.code == 'email-already-in-use') {
-                      errorMessage = 'This email is already registered.';
-                    } else if (e.code == 'weak-password') {
-                      errorMessage = 'The password is too weak.';
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(errorMessage)),
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Register', style: TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginView()),
                     );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill all fields')),
-                  );
-                }
-              },
-              child: const Text('Register'),
+                  },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    side: const BorderSide(color: Colors.green),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Back to Login', style: TextStyle(color: Colors.green)),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginView()),
-                );
-              },
-              child: const Text('Back to Login'),
-            ),
-          ],
+          ),
         ),
       ),
     );
