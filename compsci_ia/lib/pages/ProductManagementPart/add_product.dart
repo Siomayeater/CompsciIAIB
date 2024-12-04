@@ -29,7 +29,6 @@ class _AddProductState extends State<AddProduct> {
     _fetchSupplierIds();
   }
 
-  // Fetch supplier IDs from Firestore
   Future<void> _fetchSupplierIds() async {
     setState(() {
       isLoading = true;
@@ -37,7 +36,7 @@ class _AddProductState extends State<AddProduct> {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('suppliers').get();
       final supplierList = snapshot.docs.map((doc) => doc.id).toList();
-      final supplierNamesList = await _fetchSupplierNames(supplierList);  // Fetch supplier names
+      final supplierNamesList = await _fetchSupplierNames(supplierList);
       setState(() {
         supplierIds = supplierList;
         supplierNames = supplierNamesList;
@@ -50,8 +49,6 @@ class _AddProductState extends State<AddProduct> {
       print('Error fetching suppliers: $e');
     }
   }
-
-  // Fetch supplier names based on the supplier IDs
   Future<List<String>> _fetchSupplierNames(List<String> supplierIds) async {
     List<String> names = [];
     for (String supplierID in supplierIds) {
@@ -61,19 +58,24 @@ class _AddProductState extends State<AddProduct> {
             .doc(supplierID)
             .get();
         if (supplierDoc.exists) {
-          names.add(supplierDoc['supplierName'] ?? 'Unknown Supplier');  // Replace with the correct field name
+          // Check if the field exists
+          final supplierName = supplierDoc.data()?['supplierName'];
+          if (supplierName != null) {
+            names.add(supplierName); 
+          } else {
+            names.add('Unknown Supplier');
+          }
         } else {
-          names.add('Unknown Supplier');
+          names.add('Unknown Supplier'); 
         }
       } catch (e) {
         print('Error fetching supplier name: $e');
-        names.add('Unknown Supplier');
+        names.add('Unknown Supplier'); 
       }
     }
     return names;
   }
 
-  // Method to add a product to Firestore
   void addProduct() async {
     final productName = _nameController.text;
     final productDesc = _descController.text;
@@ -95,17 +97,24 @@ class _AddProductState extends State<AddProduct> {
           'supplierID': supplierID,
         });
 
-        // Log the action to the audit trail after product is successfully added
+        await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(widget.companyID)
+            .collection('quantityproducts')
+            .doc(productRef.id) 
+            .set({
+          'productID': productRef.id,
+          'quantity': 1,  
+          'companyID': widget.companyID,
+        });
         await FirebaseFirestore.instance.collection('auditTrail').add({
           'action': 'add',
           'productID': productRef.id,
           'productName': productName,
           'timestamp': FieldValue.serverTimestamp(),
-          'user': 'userID', // Replace with actual user ID from Firebase Auth
+          'user': 'userID', 
           'companyID': widget.companyID,
         });
-
-        // Navigate back to the previous page after adding the product
         Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,18 +136,17 @@ class _AddProductState extends State<AddProduct> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Dropdown for Supplier Name (displaying the supplier name in the dropdown)
             isLoading
-                ? const CircularProgressIndicator()  // Show loading until suppliers are fetched
+                ? const CircularProgressIndicator()  
                 : supplierIds.isEmpty
-                    ? const Text('No suppliers available')  // Handle case with no suppliers
+                    ? const Text('No suppliers available') 
                     : DropdownButton<String>(
                         value: selectedSupplierID,
                         hint: const Text('Select Supplier'),
                         onChanged: (newValue) {
                           setState(() {
                             selectedSupplierID = newValue;
-                            selectedSupplierName = supplierNames[supplierIds.indexOf(newValue!)]; // Set the selected supplier name
+                            selectedSupplierName = supplierNames[supplierIds.indexOf(newValue!)]; 
                           });
                         },
                         items: supplierIds.map((supplierID) {
@@ -149,7 +157,6 @@ class _AddProductState extends State<AddProduct> {
                           );
                         }).toList(),
                       ),
-            // Display the selected supplier's name
             if (selectedSupplierName != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
@@ -179,7 +186,7 @@ class _AddProductState extends State<AddProduct> {
             ),
             const SizedBox(height: 16.0),
             ElevatedButton(
-              onPressed: isLoading ? null : addProduct,  // Disable button while loading
+              onPressed: isLoading ? null : addProduct,  
               child: const Text('Add Product'),
             ),
           ],

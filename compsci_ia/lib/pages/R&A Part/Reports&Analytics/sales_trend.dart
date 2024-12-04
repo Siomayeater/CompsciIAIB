@@ -17,6 +17,8 @@ class SalesTrendReportPage extends StatefulWidget {
 class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
   late Future<List<FlSpot>> _salesDataFuture;
   late Future<List<String>> _dateLabelsFuture;
+  late Future<Map<String, int>> _trendSummaryFuture;
+
   double minY = 0;
   double maxY = 0;
 
@@ -25,9 +27,9 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
     super.initState();
     _salesDataFuture = _fetchSalesData();
     _dateLabelsFuture = _fetchDateLabels();
+    _trendSummaryFuture = _calculateTrendSummary();
   }
 
-  // Fetch sales data (sold quantities over time)
   Future<List<FlSpot>> _fetchSalesData() async {
     List<FlSpot> salesData = [];
     try {
@@ -39,15 +41,8 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
 
       int index = 0;
       for (var doc in salesSnapshot.docs) {
-        // Ensure there is a 'soldQuantity' field
-        if (!doc.data().containsKey('soldQuantity')) {
-          print('Skipping document (missing soldQuantity): ${doc.id}');
-          continue; // Skip if soldQuantity is missing
-        }
-
         int soldQuantity = doc['soldQuantity'] ?? 0;
 
-        // Track min and max values for Y axis
         minY = index == 0 ? soldQuantity.toDouble() : minY;
         maxY = index == 0 ? soldQuantity.toDouble() : maxY;
 
@@ -68,7 +63,6 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
     return salesData;
   }
 
-  // Fetch date labels for the sales data
   Future<List<String>> _fetchDateLabels() async {
     List<String> dateLabels = [];
     try {
@@ -88,36 +82,33 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
     return dateLabels;
   }
 
-  // Export sales trend data to PDF
-  Future<void> _exportToPdf(List<FlSpot> salesData, List<String> dateLabels) async {
-    final pdf = pw.Document();
+  Future<Map<String, int>> _calculateTrendSummary() async {
+    Map<String, int> summary = {'weekly': 0, 'monthly': 0, 'total': 0};
 
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text(
-                "Sales Trend Report",
-                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                headers: ['Date', 'Sold Quantity'],
-                data: List.generate(
-                  salesData.length,
-                  (index) => [dateLabels[index], salesData[index].y.toInt()],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    try {
+      var salesSnapshot = await FirebaseFirestore.instance
+          .collection('sales')
+          .where('companyID', isEqualTo: widget.companyID)
+          .get();
 
-    await Printing.layoutPdf(
-      onLayout: (format) async => pdf.save(),
-    );
+      DateTime now = DateTime.now();
+      for (var doc in salesSnapshot.docs) {
+        int soldQuantity = doc['soldQuantity'] ?? 0;
+        DateTime date = (doc['date'] as Timestamp).toDate();
+
+        summary['total'] = (summary['total'] ?? 0) + soldQuantity;
+
+        if (date.isAfter(now.subtract(const Duration(days: 7)))) {
+          summary['weekly'] = (summary['weekly'] ?? 0) + soldQuantity;
+        }
+        if (date.isAfter(DateTime(now.year, now.month - 1))) {
+          summary['monthly'] = (summary['monthly'] ?? 0) + soldQuantity;
+        }
+      }
+    } catch (e) {
+      print("Error calculating sales trends: $e");
+    }
+    return summary;
   }
 
   @override
@@ -133,7 +124,7 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
                   salesSnapshot.hasData &&
                   salesSnapshot.data!.isNotEmpty) {
                 return IconButton(
-                  icon: Icon(Icons.picture_as_pdf),
+                  icon: const Icon(Icons.picture_as_pdf),
                   onPressed: () async {
                     var salesData = salesSnapshot.data!;
                     var dateLabels = await _dateLabelsFuture;
@@ -141,7 +132,7 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
                   },
                 );
               }
-              return SizedBox.shrink();
+              return const SizedBox.shrink();
             },
           ),
         ],
@@ -172,94 +163,34 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
                 return const Center(child: Text("No date labels available."));
               }
 
-              var salesData = salesSnapshot.data!;
-              var dateLabels = dateSnapshot.data!;
+              return FutureBuilder<Map<String, int>>(
+                future: _trendSummaryFuture,
+                builder: (context, summarySnapshot) {
+                  if (summarySnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (summarySnapshot.hasError) {
+                    return Center(child: Text("Error: ${summarySnapshot.error}"));
+                  }
+                  if (!summarySnapshot.hasData) {
+                    return const Center(child: Text("No trend summary available."));
+                  }
 
-              return Row(
-                children: [
-                  // Line chart on the left
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: LineChart(
-                        LineChartData(
-                          minY: minY,
-                          maxY: maxY,
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: salesData,
-                              isCurved: true,
-                              color: Colors.blue,
-                              barWidth: 4,
-                              belowBarData: BarAreaData(
-                                show: true,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.blue.withOpacity(0.3),
-                                    Colors.blue.withOpacity(0.1),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          gridData: FlGridData(show: true),
-                          titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 40,
-                                getTitlesWidget: (value, meta) {
-                                  return Text(
-                                    value.toInt().toString(),
-                                    style: const TextStyle(fontSize: 12, color: Colors.black),
-                                  );
-                                },
-                              ),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: (salesData.length / 5).ceil().toDouble(),
-                                getTitlesWidget: (value, meta) {
-                                  int index = value.toInt();
-                                  if (index >= 0 && index < dateLabels.length) {
-                                    return Text(
-                                      dateLabels[index],
-                                      style: const TextStyle(fontSize: 12),
-                                    );
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  var salesData = salesSnapshot.data!;
+                  var dateLabels = dateSnapshot.data!;
+                  var trendSummary = summarySnapshot.data!;
 
-                  // Descriptive text on the right
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Sales Analysis',
-                            style: Theme.of(context).textTheme.headlineLarge,
-                          ),
-                          const SizedBox(height: 10),
-                          Text('This chart represents the number of products sold over time.'),
-                          const SizedBox(height: 10),
-                          Text('The chart shows the fluctuation in sales across different dates.'),
-                        ],
-                      ),
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        _buildLineChart(salesData, dateLabels),
+                        const SizedBox(height: 32),
+                        _buildTrendSummary(trendSummary),
+                      ],
                     ),
-                  ),
-                ],
+                  );
+                },
               );
             },
           );
@@ -267,4 +198,100 @@ class _SalesTrendReportPageState extends State<SalesTrendReportPage> {
       ),
     );
   }
+
+  Widget _buildLineChart(List<FlSpot> salesData, List<String> dateLabels) {
+    return SizedBox(
+      height: 300,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: LineChart(
+          LineChartData(
+            minY: minY,
+            maxY: maxY,
+            lineBarsData: [
+              LineChartBarData(
+                spots: salesData,
+                isCurved: true,
+                color: Colors.blue,
+                barWidth: 4,
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.blue.withOpacity(0.3),
+                      Colors.blue.withOpacity(0.1),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            gridData: FlGridData(show: true),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      value.toInt().toString(),
+                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: (salesData.length / 5).ceil().toDouble(),
+                  getTitlesWidget: (value, meta) {
+                    int index = value.toInt();
+                    if (index >= 0 && index < dateLabels.length) {
+                      return Text(
+                        dateLabels[index],
+                        style: const TextStyle(fontSize: 12),
+                      );
+                    }
+                    return const Text('');
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrendSummary(Map<String, int> trendSummary) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Sales Summary",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text("Weekly Sales: ${trendSummary['weekly']} items"),
+          Text("Monthly Sales: ${trendSummary['monthly']} items"),
+          Text("Total Sales: ${trendSummary['total']} items"),
+        ],
+      ),
+    );
+  }
+}
+
+_exportToPdf(List<FlSpot> salesData, List<String> dateLabels) {
 }

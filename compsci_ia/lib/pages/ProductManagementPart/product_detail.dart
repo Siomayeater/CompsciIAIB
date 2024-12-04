@@ -19,7 +19,6 @@ class ProductDetail extends StatelessWidget {
     required this.supplierID,
   }) : super(key: key);
 
-  // Method to log the audit trail when viewing product details
   void logAuditTrail(String action, String productID, String productName, String companyID) async {
     try {
       await FirebaseFirestore.instance.collection('auditTrail').add({
@@ -27,7 +26,7 @@ class ProductDetail extends StatelessWidget {
         'productID': productID,
         'productName': productName,
         'timestamp': FieldValue.serverTimestamp(),
-        'user': 'userID', // Replace with the actual user ID
+        'user': 'userID', 
         'companyID': companyID,
       });
     } catch (e) {
@@ -37,19 +36,73 @@ class ProductDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Log the viewing of the product in the audit trail when this page is loaded
-    logAuditTrail('view', productID, productName, 'companyID'); // Pass companyID dynamically as needed
+    logAuditTrail('view', productID, productName, 'companyID'); 
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(productName),
+        title: const Text('Product Details'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Product Name: $productName', style: Theme.of(context).textTheme.headlineLarge),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        productName,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 8.0),
+                      Text('Size: N/A'),
+                      const SizedBox(height: 4.0),
+                      Text('Stock Amount: N/A'),
+                      const SizedBox(height: 4.0),
+                      Text('Location: N/A'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16.0),
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'IMG',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16.0),
+            const Divider(),
+            const SizedBox(height: 8.0),
+
+            Text(
+              'Other Product Details:',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
             const SizedBox(height: 8.0),
             Text('Description: $productDesc'),
             const SizedBox(height: 8.0),

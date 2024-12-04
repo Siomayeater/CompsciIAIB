@@ -17,12 +17,11 @@ class InventoryReport extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Stock Level Report Button
+
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5, 
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Stock Level Report page with the companyID
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -40,16 +39,15 @@ class InventoryReport extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            // Low Stock Level Report Button
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5, 
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Low Stock Level Report page with the companyID
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => LowStockLevelReportPage(companyID: companyID), // Pass companyID here
+                      builder: (context) => LowStockLevelReportPage(companyID: companyID), 
                     ),
                   );
                 },

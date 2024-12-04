@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'RegisterFirebase.dart'; // Assuming this is your registration page
+import 'RegisterFirebase.dart'; 
 import 'package:compsci_ia/pages/home_page.dart';
 
 class LoginView extends StatefulWidget {

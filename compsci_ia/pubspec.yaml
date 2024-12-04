@@ -23,6 +23,7 @@ dependencies:
   intl: ^0.18.0  # Check for the latest version
   pdf: ^3.10.4
   printing: ^5.11.0
+  url_launcher: ^6.1.7
 
 dev_dependencies:
   flutter_test:

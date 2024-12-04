@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'LoginFirebase.dart'; // Correct import
+import 'LoginFirebase.dart'; 
 
 class RegisterPage extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance;

@@ -5,10 +5,12 @@ class SupplierInformationManagement extends StatefulWidget {
   const SupplierInformationManagement({super.key, required String companyID});
 
   @override
-  _SupplierInformationManagementState createState() => _SupplierInformationManagementState();
+  _SupplierInformationManagementState createState() =>
+      _SupplierInformationManagementState();
 }
 
-class _SupplierInformationManagementState extends State<SupplierInformationManagement> {
+class _SupplierInformationManagementState
+    extends State<SupplierInformationManagement> {
   // List to store suppliers and their contract details (for displaying)
   List<Map<String, String>> suppliers = [];
 
@@ -24,12 +26,19 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
 
       // Map the documents into a list of maps, and ensure correct types for each field
       final supplierList = snapshot.docs.map((doc) {
-        final companyID = doc['companyID'] as String? ?? 'No company ID';
-        final supplierName = doc['supplierName'] as String? ?? 'Unnamed Supplier';
-        final contractDetails = doc['contractDetails'] as String? ?? 'No contract details';
+        // Safely get fields with fallback values if missing
+        final companyID = doc.data().containsKey('companyID')
+            ? doc['companyID'] as String
+            : 'No company ID';
+        final supplierName = doc.data().containsKey('supplierName')
+            ? doc['supplierName'] as String
+            : 'Unnamed Supplier';
+        final contractDetails = doc.data().containsKey('contractDetails')
+            ? doc['contractDetails'] as String
+            : 'No contract details';
 
         return {
-          'id': doc.id,  // Document ID (String type)
+          'id': doc.id, // Document ID (String type)
           'companyID': companyID,
           'supplierName': supplierName,
           'contractDetails': contractDetails,
@@ -58,9 +67,9 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
       try {
         // Add supplier to Firestore
         await FirebaseFirestore.instance.collection('suppliers').add({
-          'companyID': companyID,  // Store the company ID
-          'supplierName': supplierName,  // Store the supplier name
-          'contractDetails': contractDetails,  // Store the contract details
+          'companyID': companyID, // Store the company ID
+          'supplierName': supplierName, // Store the supplier name
+          'contractDetails': contractDetails, // Store the contract details
         });
 
         setState(() {
@@ -76,7 +85,7 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
         _supplierNameController.clear();
         _contractDetailsController.clear();
 
-        Navigator.pop(context);  // Close the dialog
+        Navigator.pop(context); // Close the dialog
       } catch (e) {
         // Handle any errors during the Firestore operation
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -94,7 +103,7 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
   @override
   void initState() {
     super.initState();
-    fetchSuppliers();  // Fetch the suppliers when the screen is loaded
+    fetchSuppliers(); // Fetch the suppliers when the screen is loaded
   }
 
   @override
@@ -117,7 +126,8 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
                           margin: const EdgeInsets.symmetric(vertical: 8.0),
                           child: ListTile(
                             title: Text(suppliers[index]['supplierName'] ?? ''),
-                            subtitle: Text('Contract: ${suppliers[index]['contractDetails'] ?? ''}'),
+                            subtitle: Text(
+                                'Contract: ${suppliers[index]['contractDetails'] ?? ''}'),
                           ),
                         );
                       },
@@ -157,12 +167,12 @@ class _SupplierInformationManagementState extends State<SupplierInformationManag
                       ),
                       actions: [
                         TextButton(
-                          onPressed: addSupplier,  // Call addSupplier function
+                          onPressed: addSupplier, // Call addSupplier function
                           child: const Text('Add'),
                         ),
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(context);  // Close the dialog
+                            Navigator.pop(context); // Close the dialog
                           },
                           child: const Text('Cancel'),
                         ),

@@ -1,7 +1,8 @@
+import 'package:compsci_ia/LoginFirebase.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:compsci_ia/pages/ViewSalesPage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:compsci_ia/pages/ProductManagementPart/ProductManagement.dart';
 import 'package:compsci_ia/pages/R&A%20Part/R&A.dart';
 import 'package:compsci_ia/pages/SupplierManagementPart/SupplierManagement.dart';
@@ -17,12 +18,7 @@ class HomePage extends StatelessWidget {
     required this.companyID,
   }) : super(key: key);
 
-  // Helper method to print companyID on button press
-  void _printCompanyID() {
-    print("Company ID: $companyID");
-  }
-
-  Future<void> addProduct(BuildContext context) async {
+  Future<void> updateProductQuantity(BuildContext context) async {
     TextEditingController productNameController = TextEditingController();
     TextEditingController quantityController = TextEditingController();
 
@@ -30,15 +26,14 @@ class HomePage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Add New Product"),
+          title: const Text("Update Product Quantity"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               FutureBuilder<QuerySnapshot>(
                 future: FirebaseFirestore.instance
-                    .collection('companies')
-                    .doc(companyID)
-                    .collection('products')
+                    .collection('quantityproducts')
+                    .where('companyID', isEqualTo: companyID)
                     .get(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -69,7 +64,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 10),
               TextField(
                 controller: quantityController,
-                decoration: const InputDecoration(hintText: "Quantity"),
+                decoration: const InputDecoration(hintText: "Quantity to Add"),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -78,25 +73,46 @@ class HomePage extends StatelessWidget {
             TextButton(
               onPressed: () async {
                 String productName = productNameController.text.trim();
-                int? quantity = int.tryParse(quantityController.text);
+                int? quantityToAdd = int.tryParse(quantityController.text);
 
-                if (productName.isNotEmpty && quantity != null && quantity > 0) {
+                if (productName.isNotEmpty && quantityToAdd != null && quantityToAdd > 0) {
                   try {
-                    await FirebaseFirestore.instance
+                    var productQuerySnapshot = await FirebaseFirestore.instance
                         .collection('quantityproducts')
-                        .add({
-                          'companyID': companyID,
-                          'productName': productName,
-                          'quantity': quantity,
-                        });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Product added successfully!")),
-                    );
-                    Navigator.pop(context);
+                        .where('companyID', isEqualTo: companyID)
+                        .where('productName', isEqualTo: productName)
+                        .get();
+
+                    if (productQuerySnapshot.docs.isNotEmpty) {
+                      var productDoc = productQuerySnapshot.docs.first;
+                      int currentQuantity = productDoc['quantity'] ?? 0;
+
+                      await productDoc.reference.update({
+                        'quantity': currentQuantity + quantityToAdd,
+                      });
+
+                      await FirebaseFirestore.instance.collection('auditTrail').add({
+                        'action': 'Update Product Quantity',
+                        'companyID': companyID,
+                        'productName': productName,
+                        'quantityAdded': quantityToAdd,
+                        'timestamp': Timestamp.now(),
+                        'userID': FirebaseAuth.instance.currentUser?.uid,
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Product quantity updated successfully!")),
+                      );
+                      Navigator.pop(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Product not found.")),
+                      );
+                    }
                   } catch (e) {
-                    print("Error adding product: $e");
+                    print("Error updating product quantity: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Failed to add product: $e")),
+                      SnackBar(content: Text("Failed to update product quantity: $e")),
                     );
                   }
                 } else {
@@ -105,7 +121,7 @@ class HomePage extends StatelessWidget {
                   );
                 }
               },
-              child: const Text("Add"),
+              child: const Text("Update"),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -131,9 +147,8 @@ class HomePage extends StatelessWidget {
             children: [
               FutureBuilder<QuerySnapshot>(
                 future: FirebaseFirestore.instance
-                    .collection('companies')
-                    .doc(companyID)
-                    .collection('products')
+                    .collection('quantityproducts')
+                    .where('companyID', isEqualTo: companyID)
                     .get(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -177,14 +192,22 @@ class HomePage extends StatelessWidget {
 
                 if (productName.isNotEmpty && soldQuantity != null && soldQuantity > 0) {
                   try {
-                    await FirebaseFirestore.instance
-                        .collection('sales')
-                        .add({
-                          'companyID': companyID,
-                          'productName': productName,
-                          'soldQuantity': soldQuantity,
-                          'date': Timestamp.now(),
-                        });
+                    await FirebaseFirestore.instance.collection('sales').add({
+                      'companyID': companyID,
+                      'productName': productName,
+                      'soldQuantity': soldQuantity,
+                      'date': Timestamp.now(),
+                    });
+
+                    await FirebaseFirestore.instance.collection('auditTrail').add({
+                      'action': 'Record Sale',
+                      'companyID': companyID,
+                      'productName': productName,
+                      'soldQuantity': soldQuantity,
+                      'timestamp': Timestamp.now(),
+                      'userID': FirebaseAuth.instance.currentUser?.uid,
+                    });
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Sale recorded successfully!")),
                     );
@@ -218,99 +241,133 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Welcome, $company'),
+        backgroundColor: Colors.blue,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.pushReplacementNamed(context, '/login');
+              Navigator.pushReplacement(
+                context, 
+                MaterialPageRoute(builder: (context) => LoginView()));
             },
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
           children: [
-            Text('Company: $company', style: const TextStyle(fontSize: 18)),
-            Text('Company ID: $companyID', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductManagement(companyID: companyID),
-                  ),
-                );
-              },
-              child: const Text('Go to Product Management'),
+            _buildDashboardButton(
+              context,
+              icon: Icons.bar_chart,
+              label: 'Reporting & Analytics',
+              color: Colors.teal,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ResearchandAnalytics(companyID: companyID),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ResearchandAnalytics(companyID: companyID)),
-                );
-              },
-              child: const Text('Go to Research & Analytics'),
+            _buildDashboardButton(
+              context,
+              icon: Icons.inventory_2,
+              label: 'Product Management',
+              color: Colors.orange,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProductManagement(companyID: companyID),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SupplierManagement(companyID: companyID)),
-                );
-              },
-              child: const Text('Go to Supplier Management'),
+            _buildDashboardButton(
+              context,
+              icon: Icons.rule,
+              label: 'Audit Trails',
+              color: Colors.blueAccent,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AuditTrailPage(companyID: companyID),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AuditTrailPage(companyID: companyID),
-                  ),
-                );
-              },
-              child: const Text('Go to Audit Trail'),
+            _buildDashboardButton(
+              context,
+              icon: Icons.shopping_cart,
+              label: 'View Sales',
+              color: Colors.purple,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ViewSalesPage(companyID: companyID),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                addProduct(context);
-              },
-              child: const Text("Add Product"),
+            _buildDashboardButton(
+              context,
+              icon: Icons.add_shopping_cart,
+              label: 'Add Quantity Product',
+              color: Colors.green,
+              onPressed: () => updateProductQuantity(context),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                recordSale(context);
-              },
-              child: const Text("Record Sale"),
+            _buildDashboardButton(
+              context,
+              icon: Icons.add_shopping_cart,
+              label: 'Record Sales',
+              color: Colors.lightGreen,
+              onPressed: () => recordSale(context),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                _printCompanyID();  // Print companyID when this button is pressed
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ViewSalesPage(companyID: companyID)),
-                );
-              },
-              child: const Text("View Sales"),
+            _buildDashboardButton(
+              context,
+              icon: Icons.people,
+              label: 'Supplier Management',
+              color: Colors.purple,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SupplierManagement(companyID: companyID),
+                ),
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardButton(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onPressed}) {
+    return Card(
+      color: color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      elevation: 5,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 40, color: Colors.white),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ],
+          ),
         ),
       ),
     );

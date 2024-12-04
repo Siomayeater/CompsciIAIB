@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';  // Import url_launcher for opening URLs
 
 class CostReports extends StatefulWidget {
   const CostReports({super.key});
@@ -11,7 +12,7 @@ class CostReports extends StatefulWidget {
 }
 
 class _CostReportsState extends State<CostReports> {
-  // List to store uploaded cost reports with their URLs (allow dynamic types)
+  // List to store uploaded cost reports with their URLs
   List<Map<String, dynamic>> costReports = [];
 
   late FirebaseStorage _storage;
@@ -29,16 +30,22 @@ class _CostReportsState extends State<CostReports> {
   Future<void> _fetchCostReports() async {
     try {
       final snapshot = await _firestore.collection('costReports').get();
+
       final reports = snapshot.docs.map((doc) {
-        // Ensure 'name' and 'url' fields exist and are of type String
+        var data = doc.data();  // Fetch document data
+
+        // Debug log to see what data is being fetched
+        print("Fetched document data: $data");
+
         return {
-          'name': doc['name'] ?? 'Unnamed Report', // Default to 'Unnamed Report' if field is missing
-          'url': doc['url'] ?? '', // Default to an empty string if field is missing
+          'name': data['name'] ?? 'Unnamed Report',  // Default if the 'name' field is missing
+          'url': data['url'] ?? '',  // Default if the 'url' field is missing
+          'description': data['description'] ?? 'No description provided',  // Default if 'description' field is missing
         };
       }).toList();
 
       setState(() {
-        costReports = reports; // Now costReports can accept dynamic types
+        costReports = reports;
       });
     } catch (e) {
       print('Error fetching cost reports: $e');
@@ -54,11 +61,10 @@ class _CostReportsState extends State<CostReports> {
     );
 
     if (result != null) {
-      // Get the selected file
       var file = result.files.single;
+      String fileName = file.name;
 
       // Create a reference to Firebase Storage
-      String fileName = file.name;
       Reference storageReference = _storage.ref().child('cost_reports/$fileName');
 
       try {
@@ -72,6 +78,7 @@ class _CostReportsState extends State<CostReports> {
         await _firestore.collection('costReports').add({
           'name': fileName,
           'url': downloadUrl,
+          'description': 'Description for $fileName',  // Example description, you can modify this
           'timestamp': FieldValue.serverTimestamp(),
         });
 
@@ -97,6 +104,16 @@ class _CostReportsState extends State<CostReports> {
     }
   }
 
+  // Function to open the document URL in the browser or PDF viewer
+  void launchURL(String url) async {
+    final Uri uri = Uri.parse(url);  // Convert the string URL to a Uri object
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);  // Launch the URL
+    } else {
+      throw 'Could not launch $url';  // Error handling if the URL cannot be launched
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,7 +136,8 @@ class _CostReportsState extends State<CostReports> {
                             title: Text(costReports[index]['name'] ?? 'Unnamed Report'),
                             subtitle: Text('Click to download'),
                             onTap: () {
-                              // Optionally, you can add functionality to open the PDF when tapped
+                              // Launch the URL to open the PDF
+                              launchURL(costReports[index]['url']);
                             },
                           ),
                         );

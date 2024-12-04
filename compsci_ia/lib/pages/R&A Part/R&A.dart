@@ -6,8 +6,6 @@ class ResearchandAnalytics extends StatelessWidget {
   final String companyID;
 
   const ResearchandAnalytics({super.key, required this.companyID});
-
-  // Helper method to print companyID on button press
   void _printCompanyID() {
     print("Company ID: $companyID");
   }
@@ -23,11 +21,10 @@ class ResearchandAnalytics extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5, 
               child: ElevatedButton(
                 onPressed: () {
-                  _printCompanyID();  // Print companyID when this button is pressed
-                  // Navigate to the Inventory Report page and pass companyID
+                  _printCompanyID();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -46,11 +43,10 @@ class ResearchandAnalytics extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5,
               child: ElevatedButton(
                 onPressed: () {
-                  _printCompanyID();  // Print companyID when this button is pressed
-                  // Navigate to the Sales Analytics page and pass companyID
+                  _printCompanyID(); 
                   Navigator.push(
                     context,
                     MaterialPageRoute(

@@ -90,7 +90,7 @@ class _AddProductViewState extends State<AddProductView> {
   Future<void> _registerProduct() async {
     developer.log('Register Button Clicked');
     
-    // Get product data from the controllers
+
     final String ProductID = _ProductID.text;
     final String ProductName = _ProductName.text;
     final String ProductDesc = _ProductDesc.text;
@@ -98,10 +98,10 @@ class _AddProductViewState extends State<AddProductView> {
     final String ProductCostSupplier = _ProductCostSupplier.text;
     final String SupplierID = _SupplierID.text;
 
-    // Firestore instance
+
     final db = FirebaseFirestore.instance;
 
-    // Prepare product data to be saved
+
     final data = {
       'ProductID': ProductID,
       'ProductName': ProductName,
@@ -112,12 +112,10 @@ class _AddProductViewState extends State<AddProductView> {
     };
 
     try {
-      // Add product to Firestore collection
       await db.collection("products").add(data).then((value) {
         developer.log("Inserted into collection ID: ${value.id}");
       });
 
-      // Optionally, you can clear the fields after registration
       _clearFields();
       
     } catch (e) {

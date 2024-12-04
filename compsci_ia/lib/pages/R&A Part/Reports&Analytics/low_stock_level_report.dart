@@ -79,7 +79,6 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
 
           var stockData = snapshot.data!;
 
-          // Filter stock data to show only low stock (<= 5)
           var lowStockData = stockData.entries
               .where((entry) => entry.value <= 5)
               .toList();
@@ -88,84 +87,95 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
             return const Center(child: Text("No low stock data available."));
           }
 
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
+          int totalLowStockItems = lowStockData.length;
+
+          return SingleChildScrollView(
             child: Column(
               children: [
-                // Adjust the height of the BarChart
-                Container(
-                  height: 400,  // Adjust the height as necessary
-                  child: BarChart(
-                    BarChartData(
-                      barGroups: lowStockData.map((entry) {
-                        return BarChartGroupData(
-                          x: entry.key.hashCode,
-                          barRods: [
-                            BarChartRodData(
-                              toY: entry.value.toDouble(),
-                              color: const Color.fromARGB(255, 84, 58, 56), // Color for low stock
-                              width: 15,
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 32,  // Adds space for labels
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              // Get the product name based on its hash code
-                              String title = lowStockData
-                                  .map((entry) => entry.key)
-                                  .firstWhere(
-                                    (key) => key.hashCode == value.toInt(),
-                                    orElse: () => '',
-                                  );
-
-                              return Text(
-                                title,
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              );
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,  // Adds space for labels on the left
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              return Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      gridData: FlGridData(show: false),  // Hides grid lines
-                      borderData: FlBorderData(show: false),  // Hides the chart border
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "Low Stock Items: Items with stock levels of 5 or less",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 16),
+                _buildBarChart(lowStockData),
+                const SizedBox(height: 32),
+                _buildKeyStockInformation(totalLowStockItems),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildBarChart(List<MapEntry<String, int>> lowStockData) {
+    return SizedBox(
+      height: 250,
+      child: BarChart(
+        BarChartData(
+          barGroups: lowStockData.map((entry) {
+            return BarChartGroupData(
+              x: entry.key.hashCode,
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value.toDouble(),
+                  color: const Color.fromARGB(255, 84, 58, 56), 
+                  width: 15,
+                ),
+              ],
+            );
+          }).toList(),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) {
+                  String title = lowStockData
+                      .map((entry) => entry.key)
+                      .firstWhere(
+                        (key) => key.hashCode == value.toInt(),
+                        orElse: () => '',
+                      );
+                  return Text(
+                    title,
+                    style: const TextStyle(fontSize: 10),
+                    textAlign: TextAlign.center,
+                  );
+                },
+              ),
+            ),
+          ),
+          gridData: FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeyStockInformation(int totalLowStockItems) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Key Stock Information',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text('Total Low Stock Items: $totalLowStockItems'),
+          const Text('Low stock levels indicate items with quantities ≤ 5.'),
+        ],
       ),
     );
   }

@@ -56,8 +56,16 @@ class _KeyDocumentationState extends State<KeyDocumentation> {
                       // Get the download URL of the uploaded PDF
                       String downloadUrl = await storageRef.getDownloadURL();
 
+                      // Add the PDF to Firestore with supplier ID and download URL
+                      await FirebaseFirestore.instance.collection('pdfs').add({
+                        'pdfName': fileName,
+                        'supplierID': supplierID,
+                        'downloadUrl': downloadUrl,
+                        'timestamp': FieldValue.serverTimestamp(),
+                      });
+
+                      // Update the UI with the new PDF details
                       setState(() {
-                        // Add PDF details to the list with the supplierID
                         pdfFiles.add({
                           'pdfName': fileName,
                           'supplierID': supplierID,
@@ -65,11 +73,22 @@ class _KeyDocumentationState extends State<KeyDocumentation> {
                         });
                       });
 
-                      Navigator.pop(context);
+                      Navigator.pop(context); // Close dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('PDF uploaded successfully!')),
+                      );
                     } catch (e) {
                       print('Error uploading PDF: $e');
                       Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error uploading PDF: $e')),
+                      );
                     }
+                  } else {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Supplier ID is required')),
+                    );
                   }
                 },
                 child: const Text('Upload'),
@@ -83,6 +102,10 @@ class _KeyDocumentationState extends State<KeyDocumentation> {
             ],
           );
         },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No file selected')),
       );
     }
   }

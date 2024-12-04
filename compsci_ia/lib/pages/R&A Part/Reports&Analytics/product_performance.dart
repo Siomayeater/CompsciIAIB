@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class ProductPerformancePage extends StatefulWidget {
   final String companyID;
@@ -13,6 +14,7 @@ class ProductPerformancePage extends StatefulWidget {
 
 class _ProductPerformancePageState extends State<ProductPerformancePage> {
   late Future<Map<String, double>> _productPerformanceFuture;
+  double totalRevenue = 0.0;
 
   @override
   void initState() {
@@ -37,17 +39,14 @@ class _ProductPerformancePageState extends State<ProductPerformancePage> {
 
       Map<String, double> productPrices = {};
 
-      // Fetch the product prices
       for (var doc in productsSnapshot.docs) {
         String productName = doc['productName'];
-        // Check if productPrice exists and is a valid number
         double price = doc.data().containsKey('productPrice') && doc['productPrice'] != null
             ? doc['productPrice']
-            : 0.0; // Use 0.0 if price is missing or null
+            : 0.0;
         productPrices[productName] = price;
       }
 
-      // Calculate the revenue for each product
       for (var saleDoc in salesSnapshot.docs) {
         String productName = saleDoc['productName'];
         int soldQuantity = saleDoc['soldQuantity'];
@@ -57,6 +56,7 @@ class _ProductPerformancePageState extends State<ProductPerformancePage> {
           double revenue = soldQuantity * price;
 
           productPerformance[productName] = (productPerformance[productName] ?? 0) + revenue;
+          totalRevenue += revenue;
         }
       }
     } catch (e) {
@@ -64,27 +64,6 @@ class _ProductPerformancePageState extends State<ProductPerformancePage> {
     }
 
     return productPerformance;
-  }
-
-  Future<DocumentSnapshot?> _getProductDocument(String productName) async {
-    try {
-      var productsSnapshot = await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyID)
-          .collection('products')
-          .where('productName', isEqualTo: productName) // Filter by product name
-          .limit(1) // Get a single product document
-          .get();
-
-      if (productsSnapshot.docs.isNotEmpty) {
-        return productsSnapshot.docs[0];
-      } else {
-        return null; // No product found
-      }
-    } catch (e) {
-      print("Error fetching product document: $e");
-      return null;
-    }
   }
 
   @override
@@ -109,75 +88,20 @@ class _ProductPerformancePageState extends State<ProductPerformancePage> {
           }
 
           var performanceData = snapshot.data!;
-
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // Pie Chart - takes up half the screen
-                Container(
-                  height: MediaQuery.of(context).size.height / 2, // Half of the screen height
-                  child: PieChart(
-                    PieChartData(
-                      sections: performanceData.entries.map((entry) {
-                        return PieChartSectionData(
-                          value: entry.value,
-                          title: entry.key,
-                          radius: 50,
-                          color: Colors.primaries[performanceData.keys.toList().indexOf(entry.key) % Colors.primaries.length],
-                          titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
+                _buildSummaryCard(),
 
-                // Product Details Section - takes up the other half of the screen
+                const SizedBox(height: 16),
+
+                _buildPieChart(performanceData),
+
+                const SizedBox(height: 16),
+
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: performanceData.length,
-                    itemBuilder: (context, index) {
-                      String productName = performanceData.keys.toList()[index];
-                      double revenue = performanceData[productName]!;
-                      return FutureBuilder<DocumentSnapshot?>(
-                        future: _getProductDocument(productName), // Get product document based on productName
-                        builder: (context, productSnapshot) {
-                          if (productSnapshot.connectionState == ConnectionState.waiting) {
-                            return const ListTile(
-                              title: Text('Loading...'),
-                            );
-                          }
-
-                          if (productSnapshot.hasError) {
-                            return ListTile(
-                              title: Text('Error: ${productSnapshot.error}'),
-                            );
-                          }
-
-                          if (!productSnapshot.hasData || productSnapshot.data == null) {
-                            return ListTile(
-                              title: Text('No Product Data for: $productName'),
-                            );
-                          }
-
-                          var productData = productSnapshot.data!;
-                          try {
-                            double productPrice = productData.get('productPrice') ?? 0.0;
-
-                            return ListTile(
-                              title: Text(productName),
-                              subtitle: Text(
-                                  'Price: \$${productPrice.toStringAsFixed(2)}\nRevenue: \$${revenue.toStringAsFixed(2)}'),
-                            );
-                          } catch (e) {
-                            return ListTile(
-                              title: Text('Price not availaable for $productName'),
-                            );
-                          }
-                        },
-                      );
-                    },
-                  ),
+                  child: _buildProductDetails(performanceData),
                 ),
               ],
             ),
@@ -186,5 +110,115 @@ class _ProductPerformancePageState extends State<ProductPerformancePage> {
       ),
     );
   }
-} 
 
+  Widget _buildSummaryCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Performance Summary",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Total Revenue: \$${totalRevenue.toStringAsFixed(2)}",
+            style: const TextStyle(fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPieChart(Map<String, double> performanceData) {
+    return Container(
+      height: 300,
+      child: PieChart(
+        PieChartData(
+          sections: performanceData.entries.map((entry) {
+            double percentage = (entry.value / totalRevenue) * 100;
+            return PieChartSectionData(
+              value: entry.value,
+              title: "${percentage.toStringAsFixed(1)}%",
+              radius: 60,
+              color: Colors.primaries[
+                  performanceData.keys.toList().indexOf(entry.key) % Colors.primaries.length],
+              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+            );
+          }).toList(),
+          sectionsSpace: 2,
+          centerSpaceRadius: 50,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductDetails(Map<String, double> performanceData) {
+    return ListView.builder(
+      itemCount: performanceData.length,
+      itemBuilder: (context, index) {
+        String productName = performanceData.keys.toList()[index];
+        double revenue = performanceData[productName]!;
+        return ListTile(
+          title: Text(productName),
+          subtitle: Text(
+            'Revenue: \$${revenue.toStringAsFixed(2)}',
+            style: const TextStyle(fontSize: 14),
+          ),
+          trailing: FutureBuilder<DocumentSnapshot?>(
+            future: _getProductDocument(productName),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              }
+
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                return const Text("N/A");
+              }
+
+              var productData = snapshot.data!;
+              double productPrice = productData.get('productPrice') ?? 0.0;
+              return Text(
+                '\$${productPrice.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 14),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<DocumentSnapshot?> _getProductDocument(String productName) async {
+    try {
+      var productsSnapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyID)
+          .collection('products')
+          .where('productName', isEqualTo: productName)
+          .limit(1)
+          .get();
+
+      if (productsSnapshot.docs.isNotEmpty) {
+        return productsSnapshot.docs.first;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error fetching product document: $e");
+      return null;
+    }
+  }
+}

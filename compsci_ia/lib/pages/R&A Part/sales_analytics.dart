@@ -18,10 +18,9 @@ class SalesAnalytics extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5, 
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Product Performance page with the companyID
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -40,10 +39,9 @@ class SalesAnalytics extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5, // Half the screen width
+              width: MediaQuery.of(context).size.width * 0.5, 
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to the Sales Trend page with the companyID
                   Navigator.push(
                     context,
                     MaterialPageRoute(

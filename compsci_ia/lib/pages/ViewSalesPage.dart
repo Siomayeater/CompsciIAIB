@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; 
 
 class ViewSalesPage extends StatelessWidget {
   final String companyID;
@@ -7,16 +8,13 @@ class ViewSalesPage extends StatelessWidget {
   const ViewSalesPage({Key? key, required this.companyID}) : super(key: key);
 
   Future<List<Map<String, dynamic>>> getTodaySales() async {
-    // Get the current date
     DateTime now = DateTime.now();
     DateTime startOfDay = DateTime(now.year, now.month, now.day);
     DateTime endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
 
-    // Convert to Firestore Timestamps
     Timestamp startTimestamp = Timestamp.fromDate(startOfDay);
     Timestamp endTimestamp = Timestamp.fromDate(endOfDay);
 
-    // Query the sales collection for today
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('sales')
         .where('companyID', isEqualTo: companyID)
@@ -24,7 +22,6 @@ class ViewSalesPage extends StatelessWidget {
         .where('date', isLessThanOrEqualTo: endTimestamp)
         .get();
 
-    // Return the list of sales
     return snapshot.docs.map((doc) {
       return {
         'productName': doc['productName'],
@@ -38,33 +35,93 @@ class ViewSalesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sales for Today'),
+        title: const Text('Today\'s Sales'),
+        backgroundColor: Colors.blueAccent, 
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: getTodaySales(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                var sale = snapshot.data![index];
-                return ListTile(
-                  title: Text('Product: ${sale['productName']}'),
-                  subtitle: Text('Quantity Sold: ${sale['soldQuantity']}'),
-                  trailing: Text('Date: ${sale['date']}'),
-                );
-              },
-            );
-          } else {
-            return const Center(child: Text('No sales today.'));
-          }
-        },
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: getTodaySales(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              );
+            }
+            if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Text(
+                    'Sales Overview',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueAccent,
+                        ),
+                  ),
+                  const SizedBox(height: 16.0),
+                  // Sales List
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        var sale = snapshot.data![index];
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blueAccent,
+                              child: Text(
+                                sale['soldQuantity'].toString(),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            title: Text(
+                              sale['productName'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Sold: ${sale['soldQuantity']}',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            trailing: Text(
+                              DateFormat('MM/dd/yyyy').format(sale['date']),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              return const Center(
+                child: Text(
+                  'No sales recorded today.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+              );
+            }
+          },
+        ),
       ),
     );
   }
