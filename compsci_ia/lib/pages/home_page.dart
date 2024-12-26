@@ -32,8 +32,9 @@ class HomePage extends StatelessWidget {
             children: [
               FutureBuilder<QuerySnapshot>(
                 future: FirebaseFirestore.instance
-                    .collection('quantityproducts')
-                    .where('companyID', isEqualTo: companyID)
+                    .collection('companies')
+                    .doc(companyID)
+                    .collection('products')
                     .get(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -147,8 +148,9 @@ class HomePage extends StatelessWidget {
             children: [
               FutureBuilder<QuerySnapshot>(
                 future: FirebaseFirestore.instance
-                    .collection('quantityproducts')
-                    .where('companyID', isEqualTo: companyID)
+                    .collection('companies')
+                    .doc(companyID)
+                    .collection('products')
                     .get(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
