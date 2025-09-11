@@ -41,6 +41,27 @@ class _ProductManagementState extends State<ProductManagement> {
     }
   }
 
+  void deleteProduct(String productID) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyID)
+          .collection('products')
+          .doc(productID)
+          .delete();
+
+      fetchProducts();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product deleted successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting product: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredProducts = products.where((product) {
@@ -63,20 +84,22 @@ class _ProductManagementState extends State<ProductManagement> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => AddProduct(companyID: widget.companyID),
                 ),
               );
+              if (result == true) {
+                fetchProducts();
+              }
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -106,23 +129,54 @@ class _ProductManagementState extends State<ProductManagement> {
                   children: [
                     ListTile(
                       title: Text(productName),
-                      trailing: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
                               builder: (context) => ProductDetail(
+                                companyID: widget.companyID,
                                 productID: productID,
-                                productName: productName,
-                                productDesc: productData['productDesc'] ?? '',
-                                productPrice: productData['productPrice'] ?? 0.0,
-                                productPriceSupplier: productData['productPriceSupplier'] ?? 0.0,
-                                supplierID: productData['supplierID'] ?? '',
                               ),
-                            ),
-                          );
-                        },
-                        child: const Text('Edit', style: TextStyle(color: Colors.blue)),
+                                ),
+                              );
+                              if (result == true) {
+                                fetchProducts();
+                              }
+                            },
+                            child: const Text('Details', style: TextStyle(color: Colors.blue)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Product'),
+                                  content: const Text('Are you sure you want to delete this product?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        deleteProduct(productID);
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const Divider(),

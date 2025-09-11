@@ -11,15 +11,12 @@ class StockLevelReportPage extends StatefulWidget {
   State<StockLevelReportPage> createState() => _StockLevelReportPageState();
 }
 
-class _StockLevelReportPageState extends State<StockLevelReportPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _StockLevelReportPageState extends State<StockLevelReportPage> {
   late Future<Map<String, int>> _stockDataFuture;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     _stockDataFuture = _fetchStockLevels();
   }
 
@@ -61,26 +58,9 @@ class _StockLevelReportPageState extends State<StockLevelReportPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stock LVL Report'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Weekly'),
-            Tab(text: 'Monthly'),
-            Tab(text: 'Quarterly'),
-            Tab(text: 'Yearly'),
-          ],
-        ),
+        title: const Text('Stock Level Report'),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildReportPage(),
-          _buildReportPage(),
-          _buildReportPage(),
-          _buildReportPage(),
-        ],
-      ),
+      body: _buildReportPage(),
     );
   }
 
@@ -131,7 +111,7 @@ class _StockLevelReportPageState extends State<StockLevelReportPage>
               x: entry.key.hashCode,
               barRods: [
                 BarChartRodData(
-                  toY: entry.value.toDouble(),
+                  toY: entry.value.toDouble().clamp(0, 10000), // Prevents large formatting
                   color: entry.value <= 5
                       ? const Color.fromARGB(255, 84, 58, 56)
                       : Colors.blue,
@@ -150,8 +130,9 @@ class _StockLevelReportPageState extends State<StockLevelReportPage>
                     (key) => key.hashCode == value.toInt(),
                     orElse: () => '',
                   );
+
                   return Text(
-                    title,
+                    title.length > 10 ? '${title.substring(0, 10)}...' : title, // Shorten long names
                     style: const TextStyle(fontSize: 10),
                     textAlign: TextAlign.center,
                   );
@@ -196,11 +177,5 @@ class _StockLevelReportPageState extends State<StockLevelReportPage>
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 }

@@ -10,12 +10,11 @@ class ContractDetails extends StatefulWidget {
 
 class _ContractDetailsState extends State<ContractDetails> {
   final List<Map<String, String>> suppliers = [];
-  List<String> supplierIds = [];  // To store supplier IDs fetched from Firestore
+  List<String> supplierIds = [];  
   String? selectedSupplierID;
   final _supplierNameController = TextEditingController();
   final _contactController = TextEditingController();
 
-  // Method to fetch suppliers from Firestore
   Future<void> _fetchSuppliers() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('suppliers').get();

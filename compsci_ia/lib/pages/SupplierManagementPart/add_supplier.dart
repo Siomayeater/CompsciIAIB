@@ -14,7 +14,7 @@ class ContractDetails extends StatefulWidget {
 class _ContractDetailsState extends State<ContractDetails> {
   final List<Map<String, String>> suppliers = [];
   final _supplierNameController = TextEditingController();
-  final _contactController = TextEditingController();  // Added contact controller
+  final _contactController = TextEditingController();  
 
   void addSupplier() {
     String supplierName = '';

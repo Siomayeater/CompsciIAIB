@@ -26,21 +26,19 @@ class _CostReportsState extends State<CostReports> {
     _fetchCostReports();
   }
 
-  // Fetch the list of cost reports from Firestore
   Future<void> _fetchCostReports() async {
     try {
       final snapshot = await _firestore.collection('costReports').get();
 
       final reports = snapshot.docs.map((doc) {
-        var data = doc.data();  // Fetch document data
+        var data = doc.data();  
 
-        // Debug log to see what data is being fetched
         print("Fetched document data: $data");
 
         return {
-          'name': data['name'] ?? 'Unnamed Report',  // Default if the 'name' field is missing
-          'url': data['url'] ?? '',  // Default if the 'url' field is missing
-          'description': data['description'] ?? 'No description provided',  // Default if 'description' field is missing
+          'name': data['name'] ?? 'Unnamed Report',  
+          'url': data['url'] ?? '',  
+          'description': data['description'] ?? 'No description provided',  
         };
       }).toList();
 
@@ -52,9 +50,7 @@ class _CostReportsState extends State<CostReports> {
     }
   }
 
-  // Function to pick and upload a cost report (PDF)
   Future<void> _uploadCostReport() async {
-    // Pick a PDF file from the device
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -64,21 +60,16 @@ class _CostReportsState extends State<CostReports> {
       var file = result.files.single;
       String fileName = file.name;
 
-      // Create a reference to Firebase Storage
       Reference storageReference = _storage.ref().child('cost_reports/$fileName');
 
       try {
-        // Upload the file to Firebase Storage
         await storageReference.putData(file.bytes!);
 
-        // Get the file's download URL
         String downloadUrl = await storageReference.getDownloadURL();
-
-        // Store the URL and name in Firestore
         await _firestore.collection('costReports').add({
           'name': fileName,
           'url': downloadUrl,
-          'description': 'Description for $fileName',  // Example description, you can modify this
+          'description': 'Description for $fileName',  
           'timestamp': FieldValue.serverTimestamp(),
         });
 

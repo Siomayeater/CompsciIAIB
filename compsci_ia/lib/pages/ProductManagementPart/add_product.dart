@@ -15,31 +15,29 @@ class _AddProductState extends State<AddProduct> {
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _priceSupplierController = TextEditingController();
-  final TextEditingController _supplierIDController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _sizeController = TextEditingController();
 
   List<String> supplierIds = [];
   List<String> supplierNames = [];
   String? selectedSupplierID;
   bool isLoading = false;
-  String? selectedSupplierName;
 
   @override
   void initState() {
     super.initState();
-    _fetchSupplierIds();
+    _fetchSuppliers();
   }
 
-  Future<void> _fetchSupplierIds() async {
+  Future<void> _fetchSuppliers() async {
     setState(() {
       isLoading = true;
     });
     try {
       final snapshot = await FirebaseFirestore.instance.collection('suppliers').get();
-      final supplierList = snapshot.docs.map((doc) => doc.id).toList();
-      final supplierNamesList = await _fetchSupplierNames(supplierList);
       setState(() {
-        supplierIds = supplierList;
-        supplierNames = supplierNamesList;
+        supplierIds = snapshot.docs.map((doc) => doc.id).toList();
+        supplierNames = snapshot.docs.map((doc) => doc.data()['supplierName'] as String? ?? 'Unknown').toList();
         isLoading = false;
       });
     } catch (e) {
@@ -49,81 +47,65 @@ class _AddProductState extends State<AddProduct> {
       print('Error fetching suppliers: $e');
     }
   }
-  Future<List<String>> _fetchSupplierNames(List<String> supplierIds) async {
-    List<String> names = [];
-    for (String supplierID in supplierIds) {
-      try {
-        final supplierDoc = await FirebaseFirestore.instance
-            .collection('suppliers')
-            .doc(supplierID)
-            .get();
-        if (supplierDoc.exists) {
-          // Check if the field exists
-          final supplierName = supplierDoc.data()?['supplierName'];
-          if (supplierName != null) {
-            names.add(supplierName); 
-          } else {
-            names.add('Unknown Supplier');
-          }
-        } else {
-          names.add('Unknown Supplier'); 
-        }
-      } catch (e) {
-        print('Error fetching supplier name: $e');
-        names.add('Unknown Supplier'); 
-      }
-    }
-    return names;
-  }
 
   void addProduct() async {
-    final productName = _nameController.text;
-    final productDesc = _descController.text;
-    final productPrice = double.tryParse(_priceController.text) ?? 0.0;
-    final productPriceSupplier = double.tryParse(_priceSupplierController.text) ?? 0.0;
-    final supplierID = selectedSupplierID ?? _supplierIDController.text;
-
-    if (productName.isNotEmpty && productDesc.isNotEmpty && supplierID.isNotEmpty) {
-      try {
-        final productRef = await FirebaseFirestore.instance
-            .collection('companies')
-            .doc(widget.companyID)
-            .collection('products')
-            .add({
-          'productName': productName,
-          'productDesc': productDesc,
-          'productPrice': productPrice,
-          'productPriceSupplier': productPriceSupplier,
-          'supplierID': supplierID,
-        });
-
-        await FirebaseFirestore.instance
-            .collection('companies')
-            .doc(widget.companyID)
-            .collection('quantityproducts')
-            .doc(productRef.id) 
-            .set({
-          'productID': productRef.id,
-          'quantity': 1,  
-          'companyID': widget.companyID,
-        });
-        await FirebaseFirestore.instance.collection('auditTrail').add({
-          'action': 'add',
-          'productID': productRef.id,
-          'productName': productName,
-          'timestamp': FieldValue.serverTimestamp(),
-          'user': 'userID', 
-          'companyID': widget.companyID,
-        });
-        Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding product: $e')),
-        );
-      }
-    } else {
+    if (_nameController.text.isEmpty || _descController.text.isEmpty || selectedSupplierID == null || _locationController.text.isEmpty || _sizeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    try {
+      // Add product to the company's products collection
+      final productRef = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyID)
+          .collection('products')
+          .add({
+        'productName': _nameController.text,
+        'productDesc': _descController.text,
+        'productPrice': double.tryParse(_priceController.text) ?? 0.0,
+        'productPriceSupplier': double.tryParse(_priceSupplierController.text) ?? 0.0,
+        'supplierID': selectedSupplierID,
+        'location': _locationController.text,
+        'size': _sizeController.text,
+      });
+
+      // Check if product exists in quantityproducts collection and update or add
+      final quantityProductRef = FirebaseFirestore.instance.collection('quantityproducts');
+      final querySnapshot = await quantityProductRef
+          .where('companyID', isEqualTo: widget.companyID)
+          .where('productName', isEqualTo: _nameController.text)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Product exists, update quantity
+        final doc = querySnapshot.docs.first;
+        final currentQuantity = (doc.data()['quantity'] ?? 0) as int;
+        await doc.reference.update({'quantity': currentQuantity + 1});
+      } else {
+        // Product does not exist, create a new entry with quantity 1
+        await quantityProductRef.add({
+          'companyID': widget.companyID,
+          'productName': _nameController.text,
+          'quantity': 1,
+        });
+      }
+
+      // Log action in audit trail
+      await FirebaseFirestore.instance.collection('auditTrail').add({
+        'action': 'add',
+        'productID': productRef.id,
+        'timestamp': FieldValue.serverTimestamp(),
+        'companyID': widget.companyID,
+      });
+
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding product: $e')),
       );
     }
   }
@@ -137,61 +119,35 @@ class _AddProductState extends State<AddProduct> {
         child: Column(
           children: [
             isLoading
-                ? const CircularProgressIndicator()  
-                : supplierIds.isEmpty
-                    ? const Text('No suppliers available') 
-                    : DropdownButton<String>(
-                        value: selectedSupplierID,
-                        hint: const Text('Select Supplier'),
-                        onChanged: (newValue) {
-                          setState(() {
-                            selectedSupplierID = newValue;
-                            selectedSupplierName = supplierNames[supplierIds.indexOf(newValue!)]; 
-                          });
-                        },
-                        items: supplierIds.map((supplierID) {
-                          final supplierName = supplierNames[supplierIds.indexOf(supplierID)];
-                          return DropdownMenuItem<String>(
-                            value: supplierID,
-                            child: Text(supplierName),
-                          );
-                        }).toList(),
-                      ),
-            if (selectedSupplierName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'Selected Supplier: $selectedSupplierName',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+                ? const CircularProgressIndicator()
+                : DropdownButton<String>(
+                    value: selectedSupplierID,
+                    hint: const Text('Select Supplier'),
+                    onChanged: (newValue) {
+                      setState(() {
+                        selectedSupplierID = newValue;
+                      });
+                    },
+                    items: supplierIds.map((supplierID) {
+                      final supplierName = supplierNames[supplierIds.indexOf(supplierID)];
+                      return DropdownMenuItem<String>(
+                        value: supplierID,
+                        child: Text(supplierName),
+                      );
+                    }).toList(),
+                  ),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Product Name')),
+            TextField(controller: _descController, decoration: const InputDecoration(labelText: 'Product Description')),
+            TextField(controller: _priceController, decoration: const InputDecoration(labelText: 'Product Price'), keyboardType: TextInputType.number),
+            TextField(controller: _priceSupplierController, decoration: const InputDecoration(labelText: 'Supplier Price'), keyboardType: TextInputType.number),
+            TextField(controller: _locationController, decoration: const InputDecoration(labelText: 'Location')),
+            TextField(controller: _sizeController, decoration: const InputDecoration(labelText: 'Size')),
             const SizedBox(height: 16.0),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Product Name'),
-            ),
-            TextField(
-              controller: _descController,
-              decoration: const InputDecoration(labelText: 'Product Description'),
-            ),
-            TextField(
-              controller: _priceController,
-              decoration: const InputDecoration(labelText: 'Product Price'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _priceSupplierController,
-              decoration: const InputDecoration(labelText: 'Supplier Price'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: isLoading ? null : addProduct,  
-              child: const Text('Add Product'),
-            ),
+            ElevatedButton(onPressed: isLoading ? null : addProduct, child: const Text('Add Product')),
           ],
         ),
       ),
     );
   }
 }
+

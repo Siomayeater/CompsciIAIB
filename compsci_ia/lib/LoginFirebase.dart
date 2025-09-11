@@ -14,7 +14,6 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
-  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -67,21 +66,6 @@ class _LoginViewState extends State<LoginView> {
                   ),
                 ),
                 const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Checkbox(
-                      value: _rememberMe,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _rememberMe = value ?? false;
-                        });
-                      },
-                    ),
-                    const Text('Remember me?'),
-                  ],
-                ),
-                const SizedBox(height: 15),
                 ElevatedButton(
                   onPressed: _handleLogin,
                   style: ElevatedButton.styleFrom(
@@ -91,7 +75,7 @@ class _LoginViewState extends State<LoginView> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text('Sign in?', style: TextStyle(color: Colors.white)),
+                  child: const Text('Sign in', style: TextStyle(color: Colors.white)),
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton(

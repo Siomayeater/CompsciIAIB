@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 class LowStockLevelReportPage extends StatefulWidget {
   final String companyID;
 
-  const LowStockLevelReportPage({Key? key, required this.companyID}) : super(key: key);
+  const LowStockLevelReportPage({super.key, required this.companyID});
 
   @override
   State<LowStockLevelReportPage> createState() => _LowStockLevelReportPageState();
@@ -24,29 +24,27 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
     Map<String, int> stockLevels = {};
 
     try {
-      // Fetch stock quantities
       var quantitySnapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyID)
           .collection('quantityproducts')
-          .where('companyID', isEqualTo: widget.companyID)
           .get();
 
       for (var doc in quantitySnapshot.docs) {
         String productName = doc['productName'];
         int quantity = doc['quantity'];
-
         stockLevels[productName] = (stockLevels[productName] ?? 0) + quantity;
       }
 
-      // Fetch sales data
       var salesSnapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyID)
           .collection('sales')
-          .where('companyID', isEqualTo: widget.companyID)
           .get();
 
       for (var doc in salesSnapshot.docs) {
         String productName = doc['productName'];
         int soldQuantity = doc['soldQuantity'];
-
         stockLevels[productName] = (stockLevels[productName] ?? 0) - soldQuantity;
       }
     } catch (e) {
@@ -59,27 +57,21 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Low Stock Level Report'),
-      ),
+      appBar: AppBar(title: const Text('Low Stock Level Report')),
       body: FutureBuilder<Map<String, int>>(
         future: _stockDataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
-
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("No stock data available."));
           }
 
-          var stockData = snapshot.data!;
-
-          var lowStockData = stockData.entries
+          var lowStockData = snapshot.data!.entries
               .where((entry) => entry.value <= 5)
               .toList();
 
@@ -87,15 +79,13 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
             return const Center(child: Text("No low stock data available."));
           }
 
-          int totalLowStockItems = lowStockData.length;
-
           return SingleChildScrollView(
             child: Column(
               children: [
                 const SizedBox(height: 16),
                 _buildBarChart(lowStockData),
                 const SizedBox(height: 32),
-                _buildKeyStockInformation(totalLowStockItems),
+                _buildKeyStockInformation(lowStockData.length),
               ],
             ),
           );
@@ -115,7 +105,7 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
               barRods: [
                 BarChartRodData(
                   toY: entry.value.toDouble(),
-                  color: const Color.fromARGB(255, 84, 58, 56), 
+                  color: Colors.redAccent,
                   width: 15,
                 ),
               ],
@@ -133,11 +123,7 @@ class _LowStockLevelReportPageState extends State<LowStockLevelReportPage> {
                         (key) => key.hashCode == value.toInt(),
                         orElse: () => '',
                       );
-                  return Text(
-                    title,
-                    style: const TextStyle(fontSize: 10),
-                    textAlign: TextAlign.center,
-                  );
+                  return Text(title, style: const TextStyle(fontSize: 10), textAlign: TextAlign.center);
                 },
               ),
             ),
